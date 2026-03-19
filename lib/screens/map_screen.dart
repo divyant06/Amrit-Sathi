@@ -1,5 +1,6 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'story_screen.dart';
 
 // ─────────────────────────────────────────────
@@ -21,15 +22,14 @@ const Color _kSubtext = Color(0xFF94A3B8);
 class _Friend {
   final String initials;
   final Color color;
-  final double top;
-  final double left;
-  const _Friend(this.initials, this.color, this.top, this.left);
+  final LatLng position;
+  const _Friend(this.initials, this.color, this.position);
 }
 
-const _friends = [
-  _Friend('RK', Color(0xFF7C3AED), 0.28, 0.22),
-  _Friend('SM', Color(0xFFDB2777), 0.45, 0.65),
-  _Friend('AT', Color(0xFF0891B2), 0.60, 0.35),
+final _friends = [
+  _Friend('RK', const Color(0xFF7C3AED), LatLng(26.9124, 75.7873)), // Jaipur
+  _Friend('SM', const Color(0xFFDB2777), LatLng(32.2396, 77.1887)), // Manali
+  _Friend('AT', const Color(0xFF0891B2), LatLng(30.0869, 78.2676)), // Rishikesh
 ];
 
 class _Story {
@@ -160,7 +160,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -168,10 +167,27 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       body: Stack(
         children: [
           // ── 1. MAP BACKGROUND ─────────────────
-          _MapBackground(size: size),
-
-          // ── 2. FRIEND AVATARS ─────────────────
-          ..._friends.map((f) => _FriendPin(friend: f, size: size)),
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(28.6139, 77.2090), // New Delhi
+              initialZoom: 5.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                userAgentPackageName: 'com.example.amrit_sathi',
+              ),
+              MarkerLayer(
+                markers: _friends.map((f) => Marker(
+                  point: f.position,
+                  width: 50,
+                  height: 50,
+                  alignment: Alignment.topCenter,
+                  child: _FriendPin(friend: f),
+                )).toList(),
+              ),
+            ],
+          ),
 
           // ── 3. BOTTOM SHEET ───────────────────
           _DiscoverySheet(controller: _sheetCtrl),
@@ -206,158 +222,51 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 }
 
-// ─────────────────────────────────────────────
-// 1 · Map Background (static placeholder)
-// ─────────────────────────────────────────────
-class _MapBackground extends StatelessWidget {
-  final Size size;
-  const _MapBackground({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(child: CustomPaint(painter: _MapPainter()));
-  }
-}
-
-class _MapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = const Color(0xFF0F1923);
-    canvas.drawRect(Offset.zero & size, bg);
-
-    // Grid lines (streets)
-    final street = Paint()
-      ..color = const Color(0xFF1A2B3C)
-      ..strokeWidth = 1.2;
-
-    // Horizontal
-    for (double y = 0; y < size.height; y += 44) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), street);
-    }
-    // Vertical
-    for (double x = 0; x < size.width; x += 44) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), street);
-    }
-
-    // Wider roads (highlight)
-    final road = Paint()
-      ..color = const Color(0xFF22374F)
-      ..strokeWidth = 6;
-    canvas.drawLine(
-      Offset(size.width * 0.35, 0),
-      Offset(size.width * 0.35, size.height),
-      road,
-    );
-    canvas.drawLine(
-      Offset(0, size.height * 0.52),
-      Offset(size.width, size.height * 0.52),
-      road,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.68, 0),
-      Offset(size.width * 0.68, size.height),
-      road,
-    );
-
-    // City blocks (random fill)
-    final block = Paint()..color = const Color(0xFF14202E);
-    final rng = math.Random(42);
-    for (int i = 0; i < 30; i++) {
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      final w = 20 + rng.nextDouble() * 55;
-      final h = 14 + rng.nextDouble() * 40;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, y, w, h),
-          const Radius.circular(3),
-        ),
-        block,
-      );
-    }
-
-    // My location pin (teal dot + ripple)
-    final cx = size.width * 0.5;
-    final cy = size.height * 0.48;
-
-    canvas.drawCircle(
-      Offset(cx, cy),
-      22,
-      Paint()..color = const Color(0xFF14B8A6).withValues(alpha: 0.1),
-    );
-    canvas.drawCircle(
-      Offset(cx, cy),
-      12,
-      Paint()..color = const Color(0xFF14B8A6).withValues(alpha: 0.2),
-    );
-    canvas.drawCircle(
-      Offset(cx, cy),
-      7,
-      Paint()..color = const Color(0xFF14B8A6),
-    );
-    canvas.drawCircle(
-      Offset(cx, cy),
-      7,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
-}
 
 // ─────────────────────────────────────────────
 // 2 · Friend Avatar Pins
 // ─────────────────────────────────────────────
 class _FriendPin extends StatelessWidget {
   final _Friend friend;
-  final Size size;
-  const _FriendPin({required this.friend, required this.size});
+  const _FriendPin({required this.friend});
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: size.height * friend.top,
-      left: size.width * friend.left,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: friend.color,
-              border: Border.all(color: Colors.white, width: 2.5),
-              boxShadow: [
-                BoxShadow(
-                  color: friend.color.withValues(alpha: 0.55),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                friend.initials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: friend.color,
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: friend.color.withValues(alpha: 0.55),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              friend.initials,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          // Pointer triangle
-          CustomPaint(
-            size: const Size(10, 6),
-            painter: _PinPointerPainter(friend.color),
-          ),
-        ],
-      ),
+        ),
+        // Pointer triangle
+        CustomPaint(
+          size: const Size(10, 6),
+          painter: _PinPointerPainter(friend.color),
+        ),
+      ],
     );
   }
 }
