@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../app_theme.dart';
+import '../services/prefs_service.dart';
 
 // ─────────────────────────────────────────────
 // Accent colours (same in both modes)
@@ -39,8 +40,19 @@ class _Msg {
   _Msg({required this.role, required this.text})
     : timestamp = _fmt(DateTime.now());
 
+  // Private constructor that preserves a saved timestamp (used when loading from storage)
+  _Msg._raw({required this.role, required this.text, required this.timestamp});
+
   static String _fmt(DateTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Map<String, String> toMap() => {'role': role, 'text': text, 'timestamp': timestamp};
+
+  factory _Msg.fromMap(Map<String, String> m) => _Msg._raw(
+    role: m['role'] ?? 'ai',
+    text: m['text'] ?? '',
+    timestamp: m['timestamp'] ?? '',
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -82,6 +94,14 @@ class _CopilotScreenState extends State<CopilotScreen> {
       systemInstruction: Content.system(_systemPrompt),
     );
     _chat = _model.startChat();
+
+    // ── Restore saved chat history ──
+    final saved = PrefsService.instance.loadChat();
+    if (saved.isNotEmpty) {
+      _messages.addAll(
+        saved.map((m) => _Msg.fromMap(m)),
+      );
+    }
 
     _inputCtrl.addListener(() {
       final has = _inputCtrl.text.trim().isNotEmpty;
@@ -129,6 +149,10 @@ class _CopilotScreenState extends State<CopilotScreen> {
         _messages.add(_Msg(role: 'ai', text: response.text ?? 'No response'));
       });
       _scrollToBottom();
+      // ── Persist updated history ──
+      await PrefsService.instance.saveChat(
+        _messages.map((m) => m.toMap()).toList(),
+      );
     } catch (e) {
       if (!mounted) return;
       // Revert the last user message in the history so the session stays healthy
