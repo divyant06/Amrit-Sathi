@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'story_screen.dart';
 
 // ─────────────────────────────────────────────
@@ -119,13 +121,52 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final Animation<double> _sosAnim;
   late final DraggableScrollableController _sheetCtrl;
 
-  void _showSosSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => const _SosSheet(),
+
+  Future<void> _triggerSOS() async {
+    // 1. Check / request location permission
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever ||
+        permission == LocationPermission.denied) {
+      // Show a snack if still denied
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permission denied. Cannot send SOS.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Get current position
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
     );
+
+    // 3. Build Google Maps URL
+    final mapUrl =
+        'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
+
+    // 4. Compose SMS URI
+    final smsUri = Uri.parse(
+      'sms:?body=${Uri.encodeComponent('Emergency! I need help. My exact location is: $mapUrl')}',
+    );
+
+    // 5. Launch SMS app
+    if (await canLaunchUrl(smsUri)) {
+      await launchUrl(smsUri);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open SMS app.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+    }
   }
 
   void _showSquadSheet(BuildContext context) {
@@ -171,6 +212,10 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             options: MapOptions(
               initialCenter: LatLng(28.6139, 77.2090), // New Delhi
               initialZoom: 5.0,
+              minZoom: 4.5,
+              maxZoom: 18.0,
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+              cameraConstraint: CameraConstraint.contain(bounds: LatLngBounds(const LatLng(-90, -180), const LatLng(90, 180))),
             ),
             children: [
               TileLayer(
@@ -206,7 +251,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             right: 16,
             child: _SosButton(
               anim: _sosAnim,
-              onTap: () => _showSosSheet(context),
+              onTap: _triggerSOS,
             ),
           ),
 
@@ -779,197 +824,6 @@ class _SosButton extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// 6 · SOS Emergency Bottom Sheet
-// ─────────────────────────────────────────────
-class _SosSheet extends StatelessWidget {
-  const _SosSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: const Border(
-          top: BorderSide(color: _kBorder, width: 1),
-          left: BorderSide(color: _kBorder, width: 1),
-          right: BorderSide(color: _kBorder, width: 1),
-        ),
-      ),
-      padding: EdgeInsets.fromLTRB(24, 0, 24, 24 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _kBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-
-          // Header icon
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _kRed.withValues(alpha: 0.12),
-              border: Border.all(
-                color: _kRed.withValues(alpha: 0.35),
-                width: 1.5,
-              ),
-            ),
-            child: const Icon(Icons.emergency_rounded, color: _kRed, size: 28),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Title
-          const Text(
-            'Emergency SOS',
-            style: TextStyle(
-              color: _kRed,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Subtext
-          const Text(
-            'Broadcast your live offline coordinates to your 3 trusted contacts?',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _kSubtext, fontSize: 13.5, height: 1.5),
-          ),
-
-          const SizedBox(height: 28),
-
-          // ── Primary: Alert button ──
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF16A34A),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    margin: const EdgeInsets.all(16),
-                    content: const Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            'Simulated: Live location securely broadcasted to 3 trusted contacts.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
-              },
-              icon: const Icon(
-                Icons.wifi_tethering_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              label: const Text(
-                'Alert Trusted Contacts',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kRed,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // ── Secondary: Find Hospitals / Police ──
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.local_hospital_outlined,
-                color: _kText,
-                size: 18,
-              ),
-              label: const Text(
-                'Find Nearby Hospitals / Police',
-                style: TextStyle(
-                  color: _kText,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: _kBorder, width: 1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                foregroundColor: _kText,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // ── Cancel text button ──
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: _kMuted,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
