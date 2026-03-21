@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "Windows",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/windows/flutter/ephemeral/cpp_client_wrapper/include",
+                "${workspaceFolder}/windows/flutter/ephemeral/.plugin_symlinks/geolocator_windows/windows/include",
+                "${workspaceFolder}/windows/flutter/ephemeral/.plugin_symlinks/path_provider_windows/windows/include",
+                "${workspaceFolder}/windows/flutter/ephemeral/.plugin_symlinks/shared_preferences_windows/windows/include",
+                "${workspaceFolder}/windows/flutter/ephemeral/.plugin_symlinks/url_launcher_windows/windows/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.22621.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}

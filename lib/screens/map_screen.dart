@@ -37,35 +37,30 @@ final _friends = [
 class _Story {
   final String title;
   final String location;
-  final Color accent;
-  final IconData icon;
-  const _Story(this.title, this.location, this.accent, this.icon);
+  final String imageUrl;
+  const _Story(this.title, this.location, this.imageUrl);
 }
 
 const _stories = [
   _Story(
     'Amer Fort Sunrise',
     'Jaipur',
-    Color(0xFFB45309),
-    Icons.wb_sunny_outlined,
+    'https://images.unsplash.com/photo-1477587458883-47145ed94245?q=80&w=400&auto=format&fit=crop',
   ),
   _Story(
     'Pushkar Camel Fair',
     'Pushkar',
-    Color(0xFF0F766E),
-    Icons.festival_outlined,
+    'https://images.unsplash.com/photo-1596423735880-5c6aa6bf4c6e?q=80&w=400&auto=format&fit=crop',
   ),
   _Story(
     'Blue City Rooftop',
     'Jodhpur',
-    Color(0xFF1D4ED8),
-    Icons.roofing_outlined,
+    'https://images.unsplash.com/photo-1590766940554-634a7ed41450?q=80&w=400&auto=format&fit=crop',
   ),
   _Story(
     'Ranthambore Safari',
     'Sawai',
-    Color(0xFF065F46),
-    Icons.forest_outlined,
+    'https://images.unsplash.com/photo-1620064916958-605375b19121?q=80&w=400&auto=format&fit=crop',
   ),
 ];
 
@@ -120,9 +115,48 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final AnimationController _sosCtrl;
   late final Animation<double> _sosAnim;
   late final DraggableScrollableController _sheetCtrl;
-
+  bool _isDarkMode = true;
 
   Future<void> _triggerSOS() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 28),
+            SizedBox(width: 10),
+            Text('Emergency Alert', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to send an emergency alert with your current location to your squad?',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('SEND SOS', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     // 1. Check / request location permission
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -201,7 +235,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: _kBg,
       extendBodyBehindAppBar: true,
@@ -214,13 +247,23 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               initialZoom: 5.0,
               minZoom: 4.5,
               maxZoom: 18.0,
+              backgroundColor: _isDarkMode ? const Color(0xFF0B1120) : Colors.white,
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
-              cameraConstraint: CameraConstraint.contain(bounds: LatLngBounds(const LatLng(-90, -180), const LatLng(90, 180))),
+              // Hard fence — lock to India/South Asia region roughly
+              cameraConstraint: CameraConstraint.contain(
+                bounds: LatLngBounds(
+                  const LatLng(6.0, 68.0),
+                  const LatLng(38.0, 98.0),
+                ),
+              ),
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                userAgentPackageName: 'com.example.amrit_sathi',
+                urlTemplate: _isDarkMode
+                    ? 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png'
+                    : 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
+                userAgentPackageName: 'com.example.flutter_amrrit_sarovar',
               ),
               MarkerLayer(
                 markers: _friends.map((f) => Marker(
@@ -245,9 +288,22 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             child: const _HudBar(),
           ),
 
-          // ── 5. SOS BUTTON ─────────────────────
+          // ── 5. THEME TOGGLE BUTTON ────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 76,
+            right: 16,
+            child: FloatingActionButton.small(
+              heroTag: 'map_theme',
+              backgroundColor: _isDarkMode ? _kSurface : Colors.white,
+              foregroundColor: _isDarkMode ? Colors.amber : Colors.indigo,
+              onPressed: () => setState(() => _isDarkMode = !_isDarkMode),
+              child: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            ),
+          ),
+
+          // ── 6. SOS BUTTON ─────────────────────
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 138,
             right: 16,
             child: _SosButton(
               anim: _sosAnim,
@@ -255,7 +311,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             ),
           ),
 
-          // ── 6. MY SQUAD PILL ──────────────────
+          // ── 7. MY SQUAD PILL ──────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 72,
             left: 16,
@@ -532,53 +588,63 @@ class _StoryCard extends StatelessWidget {
           transitionDuration: const Duration(milliseconds: 280),
         ),
       ),
-      child: Container(
-        width: 100,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: story.accent.withValues(alpha: 0.12),
-          border: Border.all(
-            color: story.accent.withValues(alpha: 0.3),
-            width: 1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 96,
+          decoration: BoxDecoration(
+            color: _kCard,
+            image: DecorationImage(
+              image: NetworkImage(story.imageUrl),
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: story.accent.withValues(alpha: 0.18),
-                border: Border.all(
-                  color: story.accent.withValues(alpha: 0.5),
-                  width: 1.5,
-                ),
-              ),
-              child: Icon(story.icon, color: story.accent, size: 20),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                story.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _kText,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                ),
+          child: Container(
+            // Dark gradient overlay to make text pop
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.8),
+                ],
+                stops: const [0.4, 1.0],
               ),
             ),
-            const SizedBox(height: 3),
-            Text(
-              story.location,
-              style: const TextStyle(color: _kMuted, fontSize: 10.5),
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  story.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.white70, size: 10),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: Text(
+                        story.location,
+                        style: const TextStyle(color: Colors.white70, fontSize: 10),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
