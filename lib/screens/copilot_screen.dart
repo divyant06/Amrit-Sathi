@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import '../app_theme.dart';
 import '../services/prefs_service.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -77,25 +75,13 @@ class _CopilotScreenState extends State<CopilotScreen> {
 
   final List<_Msg> _messages = [];
 
-  // Gemini
-  late final GenerativeModel _model;
-  late ChatSession _chat;
-
-  static const _systemPrompt =
-      'You are Amrit Sathi, the AI travel companion for Amrit Sarovar — an app redefining domestic travel in India. Start with a friendly Namaste. '
-      'TONE GUIDELINES: Adapt to the context. Only focus heavily on spirituality, temples, or Seva if the user asks for it or mentions a holy city (like Varanasi, Prayagraj, etc.). For regular queries (like Delhi or Goa), provide fun, practical, and budget-friendly travel advice. '
-      'STRICT FORMATTING RULES: Do NOT use markdown headers (like ### or ##) and do NOT use asterisks (*) for bullet points. Instead, use standard dashes (-) or emojis for lists. You may use bold text to highlight important names or prices, but absolutely no other markdown symbols.';
+  // Local mocking enabled. External API elements removed.
 
   @override
   void initState() {
     super.initState();
 
-    _model = GenerativeModel(
-      model: 'gemini-flash-latest', // Updated to supported model
-      apiKey: dotenv.env['GEMINI_API_KEY']!,
-      systemInstruction: Content.system(_systemPrompt),
-    );
-    _chat = _model.startChat();
+
 
     // ── Restore saved chat history ──
     final saved = PrefsService.instance.loadChat();
@@ -134,7 +120,60 @@ class _CopilotScreenState extends State<CopilotScreen> {
     });
   }
 
-  // ── Send message to Gemini ──
+  static const Map<String, LatLng> _locations = {
+    // State Capitals
+    'new delhi': LatLng(28.6139, 77.2090),
+    'delhi': LatLng(28.6139, 77.2090),
+    'mumbai': LatLng(19.0760, 72.8777),
+    'bengaluru': LatLng(12.9716, 77.5946),
+    'bangalore': LatLng(12.9716, 77.5946),
+    'chennai': LatLng(13.0827, 80.2707),
+    'kolkata': LatLng(22.5726, 88.3639),
+    'hyderabad': LatLng(17.3850, 78.4867),
+    'thiruvananthapuram': LatLng(8.5241, 76.9366),
+    'lucknow': LatLng(26.8467, 80.9462),
+    'patna': LatLng(25.5941, 85.1376),
+    'jaipur': LatLng(26.9124, 75.7873),
+    'gandhinagar': LatLng(23.2156, 72.6369),
+    'ahmedabad': LatLng(23.0225, 72.5714),
+    'bhopal': LatLng(23.2599, 77.4126),
+    'chandigarh': LatLng(30.7333, 76.7794),
+    'bhubaneswar': LatLng(20.2961, 85.8245),
+    'dehradun': LatLng(30.3165, 78.0322),
+    'shimla': LatLng(31.1048, 77.1734),
+    'srinagar': LatLng(34.0837, 74.7973),
+    'guwahati': LatLng(26.1445, 91.7362),
+    'panaji': LatLng(15.4909, 73.8278),
+    'goa': LatLng(15.2993, 74.1240),
+    
+    // Famous Destinations
+    'manali': LatLng(32.2396, 77.1887),
+    'rishikesh': LatLng(30.0869, 78.2676),
+    'udaipur': LatLng(24.5854, 73.7125),
+    'agra': LatLng(27.1767, 78.0081),
+    'munnar': LatLng(10.0889, 77.0595),
+    'darjeeling': LatLng(27.0410, 88.2663),
+    'varanasi': LatLng(25.3176, 82.9739),
+    'kashi': LatLng(25.3176, 82.9739),
+    'kochi': LatLng(9.9312, 76.2673),
+    'pune': LatLng(18.5204, 73.8567),
+    'mysore': LatLng(12.2958, 76.6394),
+    'jodhpur': LatLng(26.2389, 73.0243),
+    'jaisalmer': LatLng(26.9157, 70.9083),
+    'ooty': LatLng(11.4100, 76.6950),
+    'leh': LatLng(34.1526, 77.5771),
+    'ladakh': LatLng(34.1526, 77.5771),
+    'gangtok': LatLng(27.3314, 88.6138),
+    'shillong': LatLng(25.5788, 91.8933),
+    'andaman': LatLng(11.7401, 92.6586),
+    'kanyakumari': LatLng(8.0883, 77.5385),
+    'amritsar': LatLng(31.6340, 74.8723),
+    'hampi': LatLng(15.3350, 76.4600),
+    'pondicherry': LatLng(11.9416, 79.8083),
+    'khajuraho': LatLng(24.8318, 79.9199),
+  };
+
+  // ── Send message to Gemini (Intercepted for Location Routing) ──
   Future<void> _sendMessage([String? optionalText]) async {
     final text = optionalText ?? _inputCtrl.text.trim();
     if (text.isEmpty) return;
@@ -146,38 +185,48 @@ class _CopilotScreenState extends State<CopilotScreen> {
     _inputCtrl.clear();
     _scrollToBottom();
 
-    try {
-      final response = await _chat.sendMessage(Content.text(text));
-      if (!mounted) return;
+    // Give a slight delay to simulate "thinking"
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    final q = text.toLowerCase();
+    String? matchedKey;
+    for (final key in _locations.keys) {
+      if (q.contains(key)) {
+        matchedKey = key;
+        break;
+      }
+    }
+
+    if (!mounted) return;
+
+    if (matchedKey != null) {
+      final displayName = matchedKey.split(' ').map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : '').join(' ');
+      
       setState(() {
-        _messages.add(_Msg(role: 'ai', text: response.text ?? 'No response'));
+        _messages.add(_Msg(role: 'ai', text: 'Sure thing! Taking you to $displayName...'));
+        _isLoading = false;
       });
       _scrollToBottom();
-      // ── Persist updated history ──
+      
       await PrefsService.instance.saveChat(
         _messages.map((m) => m.toMap()).toList(),
       );
-    } catch (e) {
-      if (!mounted) return;
-      // Revert the last user message in the history so the session stays healthy
-      final validHistory = _chat.history.toList();
-      if (validHistory.isNotEmpty && validHistory.last.role == 'user') {
-        validHistory.removeLast();
-      }
-      _chat = _model.startChat(history: validHistory);
 
+      // Delay for a natural feel before switching tabs
+      await Future.delayed(const Duration(seconds: 1));
+      
+      if (!mounted) return;
+      widget.onLocationSearched?.call(_locations[matchedKey]!);
+    } else {
       setState(() {
-        _messages.add(
-          _Msg(
-            role: 'ai',
-            text:
-                'Error: Could not reach Amrit Sathi. Please check your connection or API key.',
-          ),
-        );
+        _messages.add(_Msg(role: 'ai', text: 'That sounds like a great idea! Where exactly would you like to go?'));
+        _isLoading = false;
       });
       _scrollToBottom();
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      
+      await PrefsService.instance.saveChat(
+        _messages.map((m) => m.toMap()).toList(),
+      );
     }
   }
 
