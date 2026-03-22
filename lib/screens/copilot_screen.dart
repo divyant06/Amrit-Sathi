@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../app_theme.dart';
 import '../services/prefs_service.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 // ─────────────────────────────────────────────
 // Accent colours (same in both modes)
@@ -59,7 +60,8 @@ class _Msg {
 // Screen
 // ─────────────────────────────────────────────
 class CopilotScreen extends StatefulWidget {
-  const CopilotScreen({super.key});
+  final ValueChanged<LatLng>? onLocationSearched;
+  const CopilotScreen({super.key, this.onLocationSearched});
 
   @override
   State<CopilotScreen> createState() => _CopilotScreenState();
@@ -116,6 +118,8 @@ class _CopilotScreenState extends State<CopilotScreen> {
     _focusNode.dispose();
     super.dispose();
   }
+
+
 
   // ── Scroll to bottom after new message ──
   void _scrollToBottom() {
@@ -193,6 +197,8 @@ class _CopilotScreenState extends State<CopilotScreen> {
       appBar: _CopilotAppBar(),
       body: Column(
         children: [
+          // Search Bar removed
+
           // ── Suggestion chips ──
           _ChipRow(chips: _kChips, onTap: _onChipTap),
           Divider(height: 1, thickness: 1, color: c.border),

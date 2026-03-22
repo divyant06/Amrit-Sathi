@@ -85,21 +85,6 @@ const _hostels = [
   _Hostel('The Hosteller', '1.2 km away', '₹399/night', 4.3, Color(0xFF0891B2)),
 ];
 
-// ─────────────────────────────────────────────
-// Squad member data
-// ─────────────────────────────────────────────
-class _SquadMember {
-  final String initials;
-  final String name;
-  final Color color;
-  const _SquadMember(this.initials, this.name, this.color);
-}
-
-const _squadMembers = [
-  _SquadMember('RK', 'Rahul K.', Color(0xFF7C3AED)),
-  _SquadMember('SM', 'Simran M.', Color(0xFFDB2777)),
-  _SquadMember('AT', 'Aryan T.', Color(0xFF0891B2)),
-];
 
 // ─────────────────────────────────────────────
 // Screen
@@ -108,14 +93,42 @@ class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<MapScreen> createState() => MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
+class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final AnimationController _sosCtrl;
   late final Animation<double> _sosAnim;
   late final DraggableScrollableController _sheetCtrl;
+  final MapController _mapCtrl = MapController();
+  LatLng? meetupLocation;
   bool _isDarkMode = true;
+
+  void moveTo(LatLng dest) {
+    setState(() => meetupLocation = dest);
+
+    final latTween = Tween<double>(begin: _mapCtrl.camera.center.latitude, end: dest.latitude);
+    final lngTween = Tween<double>(begin: _mapCtrl.camera.center.longitude, end: dest.longitude);
+    final zoomTween = Tween<double>(begin: _mapCtrl.camera.zoom, end: 14.0);
+
+    final controller = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
+    final animation = CurvedAnimation(parent: controller, curve: Curves.fastOutSlowIn);
+
+    controller.addListener(() {
+      _mapCtrl.move(
+        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
+        zoomTween.evaluate(animation),
+      );
+    });
+
+    animation.addStatusListener((status) {
+      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
+        controller.dispose();
+      }
+    });
+
+    controller.forward();
+  }
 
   Future<void> _triggerSOS() async {
     final confirmed = await showDialog<bool>(
@@ -242,6 +255,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         children: [
           // ── 1. MAP BACKGROUND ─────────────────
           FlutterMap(
+            mapController: _mapCtrl,
             options: MapOptions(
               initialCenter: LatLng(28.6139, 77.2090), // New Delhi
               initialZoom: 5.0,
@@ -266,13 +280,29 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 userAgentPackageName: 'com.example.flutter_amrrit_sarovar',
               ),
               MarkerLayer(
-                markers: _friends.map((f) => Marker(
-                  point: f.position,
-                  width: 50,
-                  height: 50,
-                  alignment: Alignment.topCenter,
-                  child: _FriendPin(friend: f),
-                )).toList(),
+                markers: [
+                  ..._friends.map((f) => Marker(
+                    point: f.position,
+                    width: 50,
+                    height: 50,
+                    alignment: Alignment.topCenter,
+                    child: _FriendPin(friend: f),
+                  )),
+                  if (meetupLocation != null)
+                    Marker(
+                      point: meetupLocation!,
+                      width: 60,
+                      height: 60,
+                      alignment: Alignment.topCenter,
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.location_on, color: Colors.orange, size: 40),
+                          Text('Meetup', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12, shadows: [Shadow(color: Colors.black, blurRadius: 4)])),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -288,34 +318,41 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             child: const _HudBar(),
           ),
 
-          // ── 5. THEME TOGGLE BUTTON ────────────
+          // ── 5. RIGHT CONTROLS (THEME & SOS) ────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 76,
             right: 16,
-            child: FloatingActionButton.small(
-              heroTag: 'map_theme',
-              backgroundColor: _isDarkMode ? _kSurface : Colors.white,
-              foregroundColor: _isDarkMode ? Colors.amber : Colors.indigo,
-              onPressed: () => setState(() => _isDarkMode = !_isDarkMode),
-              child: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'map_theme',
+                  backgroundColor: _isDarkMode ? _kSurface : Colors.white,
+                  foregroundColor: _isDarkMode ? Colors.amber : Colors.indigo,
+                  onPressed: () => setState(() => _isDarkMode = !_isDarkMode),
+                  child: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                ),
+                const SizedBox(height: 16),
+                _SosButton(
+                  anim: _sosAnim,
+                  onTap: _triggerSOS,
+                ),
+              ],
             ),
           ),
 
-          // ── 6. SOS BUTTON ─────────────────────
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 138,
-            right: 16,
-            child: _SosButton(
-              anim: _sosAnim,
-              onTap: _triggerSOS,
-            ),
-          ),
-
-          // ── 7. MY SQUAD PILL ──────────────────
+          // ── 6. LEFT CONTROLS (EXPANDABLE SQUAD MENU) ────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 72,
             left: 16,
-            child: _SquadPill(onTap: () => _showSquadSheet(context)),
+            child: _ExpandableSquadMenu(
+              onSquadTap: () => _showSquadSheet(context),
+              onMeetupTap: () {
+                setState(() {
+                  meetupLocation = _mapCtrl.camera.center;
+                });
+              },
+            ),
           ),
         ],
       ),
@@ -804,6 +841,81 @@ class _HudBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
+// Expandable Squad Menu
+// ─────────────────────────────────────────────
+class _ExpandableSquadMenu extends StatefulWidget {
+  final VoidCallback onSquadTap;
+  final VoidCallback onMeetupTap;
+
+  const _ExpandableSquadMenu({
+    required this.onSquadTap,
+    required this.onMeetupTap,
+  });
+
+  @override
+  State<_ExpandableSquadMenu> createState() => _ExpandableSquadMenuState();
+}
+
+class _ExpandableSquadMenuState extends State<_ExpandableSquadMenu> {
+  bool _isExpanded = false;
+
+  void _toggleMenu() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton.extended(
+          heroTag: 'squad_options',
+          backgroundColor: _kSurface.withValues(alpha: 0.95),
+          foregroundColor: _kTeal,
+          onPressed: _toggleMenu,
+          icon: Icon(_isExpanded ? Icons.close_rounded : Icons.group_rounded, size: 20),
+          label: const Text('Squad Options', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kText)),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: _isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 12, left: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _SquadPill(onTap: () {
+                        _toggleMenu();
+                        widget.onSquadTap();
+                      }),
+                      const SizedBox(height: 12),
+                      FloatingActionButton.extended(
+                        heroTag: 'set_meetup',
+                        backgroundColor: _kTeal,
+                        foregroundColor: Colors.white,
+                        onPressed: () {
+                          _toggleMenu();
+                          widget.onMeetupTap();
+                        },
+                        icon: const Icon(Icons.location_on, size: 18),
+                        label: const Text('Set Meetup Here', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
 // 5 · SOS Button with pulsing rings
 // ─────────────────────────────────────────────
 class _SosButton extends StatelessWidget {
@@ -971,332 +1083,181 @@ class _SquadPill extends StatelessWidget {
 // ─────────────────────────────────────────────
 // 8 · Squad Manager Bottom Sheet
 // ─────────────────────────────────────────────
-class _SquadSheet extends StatelessWidget {
+class _SquadSheet extends StatefulWidget {
   const _SquadSheet();
+
+  @override
+  State<_SquadSheet> createState() => _SquadSheetState();
+}
+
+class _SquadSheetState extends State<_SquadSheet> {
+  final TextEditingController _codeCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: const Border(
-          top: BorderSide(color: _kBorder, width: 1),
-          left: BorderSide(color: _kBorder, width: 1),
-          right: BorderSide(color: _kBorder, width: 1),
+    return DefaultTabController(
+      length: 2,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.55,
+        decoration: const BoxDecoration(
+          color: _kSurface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(
+            top: BorderSide(color: _kBorder, width: 1),
+            left: BorderSide(color: _kBorder, width: 1),
+            right: BorderSide(color: _kBorder, width: 1),
+          ),
         ),
-      ),
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Handle ──
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _kBorder,
-                borderRadius: BorderRadius.circular(2),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottom),
+        child: Column(
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _kBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-
-          // ── Header ──
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: _kTeal.withValues(alpha: 0.12),
-                  border: Border.all(
-                    color: _kTeal.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: const Icon(Icons.group_rounded, color: _kTeal, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Active Trip: Delhi Weekend',
-                      style: TextStyle(
-                        color: _kText,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
+            
+            const TabBar(
+              indicatorColor: _kTeal,
+              labelColor: _kTeal,
+              unselectedLabelColor: _kMuted,
+              dividerColor: Colors.transparent,
+              tabs: [
+                Tab(text: 'Create a Trip'),
+                Tab(text: 'Join a Trip'),
+              ],
+            ),
+            
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // Create a Trip
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFF22C55E),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
+                        const Icon(Icons.add_location_alt_outlined, color: _kMuted, size: 48),
+                        const SizedBox(height: 16),
                         const Text(
-                          '3/4 members connected. Offline sync active.',
-                          style: TextStyle(
-                            color: _kMuted,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w400,
+                          'Start a new adventure',
+                          style: TextStyle(color: _kText, fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kTeal,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Simulated: Created a new trip')),
+                            );
+                          },
+                          child: const Text('Create New Trip'),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+                  ),
 
-          const SizedBox(height: 20),
-
-          // ── Divider ──
-          Container(height: 1, color: _kBorder),
-
-          const SizedBox(height: 16),
-
-          // ── Member List ──
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _squadMembers.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _SquadMemberTile(member: _squadMembers[i]),
-          ),
-
-          const SizedBox(height: 14),
-
-          // ── Add Friend dashed button ──
-          _AddFriendButton(),
-
-          const SizedBox(height: 20),
-
-          // ── Ping Meetup button ──
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF16A34A),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    margin: const EdgeInsets.all(16),
-                    content: const Row(
+                  // Join a Trip
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 18,
+                        const Text(
+                          'Enter 6-digit Squad Code',
+                          style: TextStyle(
+                            color: _kText,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            'Simulated: Meetup ping sent to squad.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _codeCtrl,
+                          maxLength: 6,
+                          textCapitalization: TextCapitalization.characters,
+                          style: const TextStyle(
+                            color: _kText,
+                            fontSize: 20,
+                            letterSpacing: 4,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. A1B2C3',
+                            hintStyle: TextStyle(
+                              color: _kMuted.withValues(alpha: 0.5),
+                              letterSpacing: 0,
+                            ),
+                            filled: true,
+                            fillColor: _kBg,
+                            counterStyle: const TextStyle(color: _kMuted),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: const BorderSide(color: _kBorder),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: const BorderSide(color: _kTeal, width: 2),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
+                        const Spacer(),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _kTeal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              if (_codeCtrl.text.length == 6) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Simulated: Joined squad ${_codeCtrl.text}')),
+                                );
+                              }
+                            },
+                            child: const Text(
+                              'Join Squad',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
-                    duration: const Duration(seconds: 3),
                   ),
-                );
-              },
-              icon: const Icon(
-                Icons.near_me_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              label: const Text(
-                'Ping Meetup Location to Squad',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kTeal,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// Squad member tile
-// ─────────────────────────────────────────────
-class _SquadMemberTile extends StatelessWidget {
-  final _SquadMember member;
-  const _SquadMemberTile({required this.member});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Avatar
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: member.color,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: member.color.withValues(alpha: 0.4),
-                blurRadius: 8,
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              member.initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-
-        // Name + status
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                member.name,
-                style: const TextStyle(
-                  color: _kText,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'Location Synced just now',
-                style: TextStyle(
-                  color: Color(0xFF22C55E),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Online indicator
-        Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Color(0xFF22C55E),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// Add Friend dashed button
-// ─────────────────────────────────────────────
-class _AddFriendButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {},
-      child: CustomPaint(
-        painter: _DashedBorderPainter(),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.person_add_outlined, color: _kMuted, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'Add Friend to Squad',
-                style: TextStyle(
-                  color: _kSubtext,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const dashWidth = 6.0;
-    const dashSpace = 5.0;
-    final paint = Paint()
-      ..color = _kBorder
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
-    const radius = 12.0;
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(radius),
-    );
-    final path = Path()..addRRect(rect);
-    final metric = path.computeMetrics().first;
-    double distance = 0;
-    while (distance < metric.length) {
-      final end = (distance + dashWidth).clamp(0, metric.length);
-      canvas.drawPath(metric.extractPath(distance, end as double), paint);
-      distance += dashWidth + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }

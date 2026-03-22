@@ -48,11 +48,19 @@ class _RootShell extends StatefulWidget {
 
 class _RootShellState extends State<_RootShell> {
   int _selectedIndex = 0;
+  final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
 
-  static const List<Widget> _screens = [
-    CopilotScreen(),
-    MapScreen(),
-    ProfileScreen(),
+  late final List<Widget> _screens = [
+    CopilotScreen(
+      onLocationSearched: (loc) {
+        setState(() => _selectedIndex = 1);
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _mapKey.currentState?.moveTo(loc);
+        });
+      },
+    ),
+    MapScreen(key: _mapKey),
+    const ProfileScreen(),
   ];
 
   @override
