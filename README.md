@@ -42,25 +42,21 @@ Built natively with **Flutter** and powered dynamically by **Google Gemini**, Am
 | *Dynamic, context-aware itineraries built by Gemini.* | *Keep track of your squad, even offline.* | *Sleek `#0B1120` dark theme aesthetic.* |
 
 ---
-## 🛠️ Tech Stack & Architecture
+## 🛠️ Tech Stack & System Architecture
 
 ### **Frontend (Mobile)**
 * **Framework:** Flutter / Dart (Cross-platform)
-* **AI Engine:** Google Gemini (`google_generative_ai`)
+* **State Management:** Riverpod (For robust, scalable application state)
 * **Local Database:** Hive (Lightweight, NoSQL persistent storage for offline-first data)
 * **Maps:** Google Maps Flutter SDK (with custom Dark Mode styling)
 
-### **Proposed Backend (The Roadmap)**
-* **API Framework:** FastAPI (Python) - For secure, high-performance AI orchestration.
+### **Proposed Backend & DevOps**
+* **AI Orchestration:** FastAPI (Python) + LangChain - For secure, high-performance AI agent routing and tool integration.
 * **Database & Auth:** Supabase (PostgreSQL) - Managing user profiles, squad synchronization, and shared itineraries.
-* **Infrastructure:** Google Cloud Run / Docker (Scalable, low-budget serverless hosting).
-## 🏗️ System Architecture (Offline-First)
+* **Spatial Data:** PostGIS - For advanced location-based queries (e.g., finding nearby squad members or hidden gems).
+* **Infrastructure:** Google Cloud Run / Docker (Scalable, serverless hosting).
+* **CI/CD:** GitHub Actions (Automated testing and PR formatting checks).
 
-Amrit Sathi follows a **Local-First Sync** strategy:
-1. **User Input:** Travel queries or squad updates are first handled locally.
-2. **Persistent Memory:** All data is cached in **Hive** for instant offline access.
-3. **AI Integration:** Prompts are sent to Gemini; responses are parsed and stored locally for future reference.
-4. **Cloud Sync (Upcoming):** Local data will periodically sync with the **Supabase** backend via **FastAPI** when a connection is restored.
 ---
 
 ## 🚀 Getting Started
