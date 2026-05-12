@@ -85,7 +85,7 @@ flutter run
 (To build a production-ready physical APK for your Android device, run: flutter build apk --release --no-tree-shake-icons)
 ---
 
-🗺️ Project Roadmap
+**🗺️ Project Roadmap**
 [x] Phase 1: Core UI layout and Premium Dark Mode (#0B1120).
 
 [x] Phase 2: Gemini AI integration (google_generative_ai) for contextual trip planning.
