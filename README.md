@@ -83,23 +83,8 @@ GEMINI_API_KEY=your_api_key_here
 flutter run
 ```
 (To build a production-ready physical APK for your Android device, run: flutter build apk --release --no-tree-shake-icons)
-
-🤝 Contributing (GSSoC Welcome!)
-We are thrilled to be an Admin Project for GirlScript Summer of Code (GSSoC)! Whether you are a beginner looking for your first PR or an experienced developer, we have a place for you.
-
-How to Contribute:
-Find an Issue: Look for issues labeled good first issue, gssoc, or help wanted in the Issues tab.
-
-Fork & Clone: Fork this repository to your GitHub account and clone it to your local machine.
-
-Create a Branch: Create a new branch for your feature or bug fix (git checkout -b feature/your-feature-name).
-
-Make Changes: Write your code, ensure it aligns with our styling, and test it locally.
-
-Commit & Push: Commit your changes (git commit -m "Add cool new feature") and push to your fork (git push origin feature/your-feature-name).
-
-Open a PR: Open a Pull Request from your fork to our main branch. Provide a clear description of what you changed!
 ---
+
 🗺️ Project Roadmap
 [x] Phase 1: Core UI layout and Premium Dark Mode (#0B1120).
 
