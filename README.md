@@ -42,14 +42,18 @@ Built natively with **Flutter** and powered dynamically by **Google Gemini**, Am
 | *Dynamic, context-aware itineraries built by Gemini.* | *Keep track of your squad, even offline.* | *Sleek `#0B1120` dark theme aesthetic.* |
 
 ---
+## 🛠️ Tech Stack & Architecture
 
-## 🛠️ Tech Stack
-
-* **Framework:** Flutter / Dart
+### **Frontend (Mobile)**
+* **Framework:** Flutter / Dart (Cross-platform)
 * **AI Engine:** Google Gemini (`google_generative_ai`)
-* **Environment Security:** `flutter_dotenv` (Local vault for API keys)
-* **Architecture:** Offline-First with Persistent Memory
+* **Local Database:** Hive (Lightweight, NoSQL persistent storage for offline-first data)
+* **Maps:** Google Maps Flutter SDK (with custom Dark Mode styling)
 
+### **Proposed Backend (The Roadmap)**
+* **API Framework:** FastAPI (Python) - For secure, high-performance AI orchestration.
+* **Database & Auth:** Supabase (PostgreSQL) - Managing user profiles, squad synchronization, and shared itineraries.
+* **Infrastructure:** Google Cloud Run / Docker (Scalable, low-budget serverless hosting).
 ---
 
 ## 🚀 Getting Started
