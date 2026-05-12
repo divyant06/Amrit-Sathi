@@ -54,6 +54,13 @@ Built natively with **Flutter** and powered dynamically by **Google Gemini**, Am
 * **API Framework:** FastAPI (Python) - For secure, high-performance AI orchestration.
 * **Database & Auth:** Supabase (PostgreSQL) - Managing user profiles, squad synchronization, and shared itineraries.
 * **Infrastructure:** Google Cloud Run / Docker (Scalable, low-budget serverless hosting).
+## 🏗️ System Architecture (Offline-First)
+
+Amrit Sathi follows a **Local-First Sync** strategy:
+1. **User Input:** Travel queries or squad updates are first handled locally.
+2. **Persistent Memory:** All data is cached in **Hive** for instant offline access.
+3. **AI Integration:** Prompts are sent to Gemini; responses are parsed and stored locally for future reference.
+4. **Cloud Sync (Upcoming):** Local data will periodically sync with the **Supabase** backend via **FastAPI** when a connection is restored.
 ---
 
 ## 🚀 Getting Started
