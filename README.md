@@ -105,8 +105,26 @@ Currently in active development. If you want the beta .apk to test it on your ph
 
 Created with ❤️ by Divyant Linkedin:[https://www.linkedin.com/in/divyant-poddar/](https://www.linkedin.com/in/divyant-poddar/)
 
-🌟 Contributors Hall of Fame
+---
 
-We appreciate all the amazing people contributing to Amrit Sathi ❤️
+## 🌟 Contributors Hall of Fame
 
-<table> <tr> <td align="center"> <a href="https://github.com/divyant06"> <img src="https://github.com/divyant06.png" width="100px;" alt="Contributor"/> <br /> <sub><b>divyant06</b></sub> </a> <br /> 💻 Creator </td> </tr> </table>
+A huge thank you to everyone helping build Amrit Sathi! ❤️
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/divyant06">
+        <img src="https://github.com/divyant06.png" width="100px;" alt="Divyant"/>
+        <br />
+        <sub><b>divyant06</b></sub>
+      </a>
+      <br />
+      💻 Creator
+    </td>
+  </tr>
+</table>
+
+### Want to be featured here?
+
+Contribute to the project through code, documentation, testing, or design and become part of the Amrit Sathi Hall of Fame! 🚀
