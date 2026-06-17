@@ -104,3 +104,21 @@ Implement "Geofencing" alerts for group safety.
 Currently in active development. If you want the beta .apk to test it on your physical phone, or if you have brutal feedback, reach out!
 
 Created with ❤️ by Divyant Linkedin:[https://www.linkedin.com/in/divyant-poddar/](https://www.linkedin.com/in/divyant-poddar/)
+
+---
+
+## 🤝 Contributors Hall of Fame
+
+We thank every contributor who helps make Amrit Sathi better! 🚀
+
+<!-- Remove the comment markers below when the first contributors have been added -->
+<!-- 
+### 🌟 All Contributors
+Add your name and profile below after your first PR is merged:
+-->
+
+| Avatar | Contributor | Role |
+|:------:|:-----------:|:----:|
+| <img src="https://avatars.githubusercontent.com/u/157192462?v=4" width="60" height="60" style="border-radius:50%"/> | [saurabhhhcodes](https://github.com/saurabhhhcodes) | 💻 Code, 📖 Docs |
+
+> 💡 *Want to see yourself here? Check out our [open issues](https://github.com/divyant06/Amrit-Sathi/issues) and make your first contribution!*
