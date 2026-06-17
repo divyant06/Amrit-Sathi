@@ -99,7 +99,19 @@ Utilize WebSockets for instant location updates between squad members.
 Implement "Geofencing" alerts for group safety.
 
 [ ] Phase 6: Official launch on the Google Play Store.
+
 ---
+
+## 🏆 Contributors Hall of Fame
+
+Thanks to all our amazing contributors!  
+
+<a href="https://github.com/divyant06/Amrit-Sathi/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=divyant06/Amrit-Sathi" />
+</a>
+
+---
+
 📬 Connect & Feedback
 Currently in active development. If you want the beta .apk to test it on your physical phone, or if you have brutal feedback, reach out!
 
