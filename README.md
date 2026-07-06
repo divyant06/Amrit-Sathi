@@ -72,13 +72,13 @@ cd Amrit-Sathi
 ```bash
 flutter pub get
 ```
-3. Setup the AI Vault (.env)
+### 3. Setup the AI Vault (.env)
 Because security is a priority, API keys are not committed to this repository. You must create your own local environment file.
 Create a file named .env in the root directory and add your Gemini API key:
 ```bash
 GEMINI_API_KEY=your_api_key_here
 ```
-4. Run the app
+### 4. Run the app
 ```bash
 flutter run
 ```
