@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'story_screen.dart';
 
@@ -101,8 +102,10 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late final Animation<double> _sosAnim;
   late final DraggableScrollableController _sheetCtrl;
   final MapController _mapCtrl = MapController();
+  final TextEditingController _searchCtrl = TextEditingController();
   LatLng? meetupLocation;
   bool _isDarkMode = true;
+  bool _isSearching = false;
 
   void moveTo(LatLng dest) {
     setState(() => meetupLocation = dest);
@@ -128,6 +131,34 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     });
 
     controller.forward();
+  }
+
+  Future<void> _searchCity() async {
+    final query = _searchCtrl.text.trim();
+    if (query.isEmpty || _isSearching) return;
+
+    setState(() => _isSearching = true);
+    try {
+      final locations = await locationFromAddress(query);
+      if (!mounted) return;
+      if (locations.isEmpty) {
+        _showSearchMessage('No location found for "$query".');
+        return;
+      }
+      moveTo(LatLng(locations.first.latitude, locations.first.longitude));
+    } on Exception {
+      if (mounted) {
+        _showSearchMessage('Unable to search right now. Try again later.');
+      }
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
+    }
+  }
+
+  void _showSearchMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _triggerSOS() async {
@@ -243,6 +274,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   void dispose() {
     _sosCtrl.dispose();
     _sheetCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -315,7 +347,11 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             top: MediaQuery.of(context).padding.top + 12,
             left: 16,
             right: 16,
-            child: const _HudBar(),
+            child: _HudBar(
+              controller: _searchCtrl,
+              isSearching: _isSearching,
+              onSearch: _searchCity,
+            ),
           ),
 
           // ── 5. RIGHT CONTROLS (THEME & SOS) ────────────
@@ -775,7 +811,15 @@ class _HostelRow extends StatelessWidget {
 // 4 · HUD Search Bar
 // ─────────────────────────────────────────────
 class _HudBar extends StatelessWidget {
-  const _HudBar();
+  final TextEditingController controller;
+  final bool isSearching;
+  final VoidCallback onSearch;
+
+  const _HudBar({
+    required this.controller,
+    required this.isSearching,
+    required this.onSearch,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -797,17 +841,41 @@ class _HudBar extends StatelessWidget {
                   const SizedBox(width: 14),
                   const Icon(Icons.search_rounded, color: _kMuted, size: 18),
                   const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Search places, hostels, stories…',
-                      style: TextStyle(
-                        color: _kMuted,
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      onSubmitted: (_) => onSearch(),
+                      textInputAction: TextInputAction.search,
+                      enabled: !isSearching,
+                      style: const TextStyle(
+                        color: _kText,
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Search cities, hostels, stories...',
+                        hintStyle: TextStyle(color: _kMuted),
+                        border: InputBorder.none,
+                        isDense: true,
                       ),
                     ),
                   ),
                   Container(width: 1, height: 24, color: _kBorder),
+                  IconButton(
+                    onPressed: isSearching ? null : onSearch,
+                    tooltip: 'Search map',
+                    icon: isSearching
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.arrow_forward_rounded),
+                    color: _kTeal,
+                    iconSize: 18,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    constraints: const BoxConstraints(minWidth: 44),
+                  ),
                   // Filter button
                   InkWell(
                     onTap: () {},
