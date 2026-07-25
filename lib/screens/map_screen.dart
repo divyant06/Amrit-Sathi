@@ -231,7 +231,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     _sosCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: false);
+    )..repeat(reverse: true);
     _sosAnim = Tween<double>(
       begin: 0.0,
       end: 1.0,
