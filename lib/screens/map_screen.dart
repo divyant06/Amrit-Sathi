@@ -190,29 +190,51 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
 
     // 2. Get current position
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    // 3. Build Google Maps URL
-    final mapUrl =
-        'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
-
-    // 4. Compose SMS URI
-    final smsUri = Uri.parse(
-      'sms:?body=${Uri.encodeComponent('Emergency! I need help. My exact location is: $mapUrl')}',
-    );
-
-    // 5. Launch SMS app
-    if (await canLaunchUrl(smsUri)) {
-      await launchUrl(smsUri);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open SMS app.'),
-          backgroundColor: Color(0xFFEF4444),
-        ),
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
+
+      // 3. Build Google Maps URL
+      final mapUrl =
+          'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
+
+      // 4. Compose SMS URI
+      final smsUri = Uri.parse(
+        'sms:?body=${Uri.encodeComponent('Emergency! I need help. My exact location is: $mapUrl')}',
+      );
+
+      // 5. Launch SMS app
+      try {
+        if (await canLaunchUrl(smsUri)) {
+          await launchUrl(smsUri);
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open SMS app.'),
+              backgroundColor: Color(0xFFEF4444),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open SMS app.'),
+              backgroundColor: Color(0xFFEF4444),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not get current location.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
     }
   }
 
