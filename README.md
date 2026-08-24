@@ -104,3 +104,7 @@ Implement "Geofencing" alerts for group safety.
 Currently in active development. If you want the beta .apk to test it on your physical phone, or if you have brutal feedback, reach out!
 
 Created with ❤️ by Divyant Linkedin:[https://www.linkedin.com/in/divyant-poddar/](https://www.linkedin.com/in/divyant-poddar/)
+
+## Code of Conduct
+
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
